@@ -1,129 +1,95 @@
-
 import streamlit as st
+import pandas as pd
+from datetime import datetime
 
 # Constants
 DENSITY_OF_STEEL = 7850  # kg/m^3
 MM_TO_METERS = 0.001  # Conversion factor from mm to meters
 COST_PER_KG = {
-    'Mild Steel Plate': 61,
-    'Round Plate': 70,
-    'Channel': 60,
-    'Angle': 60,
-    'Flat': 60,
-    'Round Plate with Bore': 75,
-    'CR Sheet': 75,
-    'Round Pipe': 140,
-    'Square Tube': 80
+    'Shaft': 70,
+    'Plate': 61,
+    # Add other member types as needed
 }
 TAX_RATE = 0.18  # 18% tax
 
 # Function to calculate weight and cost
-def calculate_weight_and_cost(member_type, length, breadth=0, thickness=0, diameter=0, inner_diameter=0, height=0, flange_width=0, flange_thickness=0, web_thickness=0, leg1=0, leg2=0, side=0):
-    length = length * MM_TO_METERS
+def calculate_weight_and_cost(member_type, dimensions):
     volume = 0
-    dimensions = ""
 
-    if member_type in ['Mild Steel Plate', 'Flat', 'CR Sheet']:
-        breadth = breadth * MM_TO_METERS
-        thickness = thickness * MM_TO_METERS
-        volume = length * breadth * thickness
-        dimensions = f"{length*1000:.0f} x {breadth*1000:.0f} x {thickness*1000:.0f} mm"
-    elif member_type == 'Round Plate':
-        diameter = diameter * MM_TO_METERS
-        thickness = thickness * MM_TO_METERS
+    if member_type == 'Shaft':
+        diameter = dimensions['Diameter'] * MM_TO_METERS
+        length = dimensions['Length'] * MM_TO_METERS
         radius = diameter / 2
-        volume = 3.1416 * radius ** 2 * thickness
-        dimensions = f"{diameter*1000:.0f} x {thickness*1000:.0f} mm"
-    elif member_type == 'Round Plate with Bore':
-        diameter = diameter * MM_TO_METERS
-        inner_diameter = inner_diameter * MM_TO_METERS
-        thickness = thickness * MM_TO_METERS
-        outer_radius = diameter / 2
-        inner_radius = inner_diameter / 2
-        volume = 3.1416 * (outer_radius ** 2 - inner_radius ** 2) * thickness
-        dimensions = f"{diameter*1000:.0f} x {thickness*1000:.0f} mm, Inner Diameter: {inner_diameter*1000:.0f} mm"
-    elif member_type == 'Round Pipe':
-        diameter = diameter * MM_TO_METERS
-        thickness = thickness * MM_TO_METERS
-        outer_radius = diameter / 2
-        inner_radius = outer_radius - thickness
-        volume = 3.1416 * (outer_radius ** 2 - inner_radius ** 2) * length
-        dimensions = f"{diameter*1000:.0f} x {thickness*1000:.0f} mm"
-    elif member_type == 'Square Tube':
-        side = side * MM_TO_METERS
-        thickness = thickness * MM_TO_METERS
-        outer_side = side
-        inner_side = side - 2 * thickness
-        volume = (outer_side ** 2 - inner_side ** 2) * length
-        dimensions = f"{side*1000:.0f} x {thickness*1000:.0f} mm"
-    elif member_type == 'Channel':
-        height = height * MM_TO_METERS
-        flange_width = flange_width * MM_TO_METERS
-        flange_thickness = flange_thickness * MM_TO_METERS
-        web_thickness = web_thickness * MM_TO_METERS
-        volume = length * ((2 * flange_width * flange_thickness) + (height - 2 * flange_thickness) * web_thickness)
-        dimensions = f"{height*1000:.0f} x {flange_width*1000:.0f} x {flange_thickness*1000:.0f} x {web_thickness*1000:.0f} mm"
-    elif member_type == 'Angle':
-        leg1 = leg1 * MM_TO_METERS
-        leg2 = leg2 * MM_TO_METERS
-        thickness = thickness * MM_TO_METERS
-        volume = length * (leg1 + leg2 - thickness) * thickness
-        dimensions = f"{leg1*1000:.0f} x {leg2*1000:.0f} x {thickness*1000:.0f} mm"
+        volume = 3.1416 * radius ** 2 * length
+    elif member_type == 'Plate':
+        length = dimensions['Length'] * MM_TO_METERS
+        breadth = dimensions['Breadth'] * MM_TO_METERS
+        thickness = dimensions['Thickness'] * MM_TO_METERS
+        volume = length * breadth * thickness
+    # Add calculations for other member types as needed
 
     weight = volume * DENSITY_OF_STEEL
     cost = weight * COST_PER_KG[member_type]
     total_cost = cost + (cost * TAX_RATE)
-    return dimensions, weight, total_cost
+    return weight, total_cost
 
-# Streamlit app layout
-st.title("Steel Member Weight and Cost Calculator")
+# Function to save data to CSV
+def save_to_csv(member_type, dimensions, weight, total_cost):
+    filename = "orders.csv"
+    df = pd.DataFrame(columns=['Date', 'Member Type', 'Dimensions', 'Weight (Kg)', 'Total Cost (Rs)'])
 
-member_type = st.selectbox("Select the type of steel member", ['Mild Steel Plate', 'Round Plate', 'Channel', 'Angle', 'Flat', 'Round Plate with Bore', 'CR Sheet', 'Round Pipe', 'Square Tube'])
+    # Load existing data
+    try:
+        df = pd.read_csv(filename)
+    except FileNotFoundError:
+        pass
 
-length = st.number_input("Length (mm)", min_value=0)
-if member_type in ['Mild Steel Plate', 'Flat', 'CR Sheet']:
-    breadth = st.number_input("Breadth (mm)", min_value=0)
-    thickness = st.number_input("Thickness (mm)", min_value=0)
-elif member_type == 'Round Plate':
-    diameter = st.number_input("Diameter (mm)", min_value=0)
-    thickness = st.number_input("Thickness (mm)", min_value=0)
-elif member_type == 'Round Plate with Bore':
-    diameter = st.number_input("Diameter (mm)", min_value=0)
-    inner_diameter = st.number_input("Inner Diameter (mm)", min_value=0)
-    thickness = st.number_input("Thickness (mm)", min_value=0)
-elif member_type == 'Round Pipe':
-    diameter = st.number_input("Diameter (mm)", min_value=0)
-    thickness = st.number_input("Thickness (mm)", min_value=0)
-elif member_type == 'Square Tube':
-    side = st.number_input("Side Length (mm)", min_value=0)
-    thickness = st.number_input("Thickness (mm)", min_value=0)
-elif member_type == 'Channel':
-    height = st.number_input("Height (mm)", min_value=0)
-    flange_width = st.number_input("Flange Width (mm)", min_value=0)
-    flange_thickness = st.number_input("Flange Thickness (mm)", min_value=0)
-    web_thickness = st.number_input("Web Thickness (mm)", min_value=0)
-elif member_type == 'Angle':
-    leg1 = st.number_input("Leg1 Width (mm)", min_value=0)
-    leg2 = st.number_input("Leg2 Width (mm)", min_value=0)
-    thickness = st.number_input("Thickness (mm)", min_value=0)
+    # Append new data
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    dimensions_str = ", ".join(f"{k}: {v} mm" for k, v in dimensions.items())
+    new_data = pd.DataFrame([{'Date': date, 'Member Type': member_type, 'Dimensions': dimensions_str, 'Weight (Kg)': weight, 'Total Cost (Rs)': total_cost}])
+    df = pd.concat([df, new_data], ignore_index=True)
+
+    # Save to CSV
+    df.to_csv(filename, index=False)
+
+# Streamlit UI
+st.title("Steel Member Cost Calculator")
+
+member_type = st.selectbox("Select Member Type", options=['Shaft', 'Plate'])
+dimensions = {}
+
+if member_type == 'Shaft':
+    dimensions['Diameter'] = st.number_input("Diameter (mm)", min_value=0.0, step=0.1)
+    dimensions['Length'] = st.number_input("Length (mm)", min_value=0.0, step=0.1)
+elif member_type == 'Plate':
+    dimensions['Length'] = st.number_input("Length (mm)", min_value=0.0, step=0.1)
+    dimensions['Breadth'] = st.number_input("Breadth (mm)", min_value=0.0, step=0.1)
+    dimensions['Thickness'] = st.number_input("Thickness (mm)", min_value=0.0, step=0.1)
+# Add input fields for other member types as needed
 
 if st.button("Calculate Weight and Cost"):
-    if member_type in ['Mild Steel Plate', 'Flat', 'CR Sheet']:
-        dimensions, weight, total_cost = calculate_weight_and_cost(member_type, length, breadth, thickness)
-    elif member_type == 'Round Plate':
-        dimensions, weight, total_cost = calculate_weight_and_cost(member_type, length, thickness=thickness, diameter=diameter)
-    elif member_type == 'Round Plate with Bore':
-        dimensions, weight, total_cost = calculate_weight_and_cost(member_type, length, thickness=thickness, diameter=diameter, inner_diameter=inner_diameter)
-    elif member_type == 'Round Pipe':
-        dimensions, weight, total_cost = calculate_weight_and_cost(member_type, length, thickness=thickness, diameter=diameter)
-    elif member_type == 'Square Tube':
-        dimensions, weight, total_cost = calculate_weight_and_cost(member_type, length, thickness=thickness, side=side)
-    elif member_type == 'Channel':
-        dimensions, weight, total_cost = calculate_weight_and_cost(member_type, length, height=height, flange_width=flange_width, flange_thickness=flange_thickness, web_thickness=web_thickness)
-    elif member_type == 'Angle':
-        dimensions, weight, total_cost = calculate_weight_and_cost(member_type, length, leg1=leg1, leg2=leg2, thickness=thickness)
+    if all(dim > 0 for dim in dimensions.values()):
+        weight, total_cost = calculate_weight_and_cost(member_type, dimensions)
+        st.success(f"Weight: {weight:.2f} Kg")
+        st.success(f"Total Cost: ₹{total_cost:.2f}")
+        save_to_csv(member_type, dimensions, weight, total_cost)
+    else:
+        st.error("Please enter all dimensions.")
 
-    st.write(f"**Type**: {member_type}")
-    st.write(f"**Dimensions**: {dimensions}")
-    st.write(f"**Weight**: {weight:.2f} Kg")
-    st.write(f"**Total Cost**: Rs {total_cost:.2f}")
+# Option to view saved data
+if st.checkbox("View Saved Data"):
+    member_filter = st.selectbox("Filter by Member Type", options=['All', 'Shaft', 'Plate'])
+    start_date = st.date_input("Start Date", value=datetime.now().date())
+    end_date = st.date_input("End Date", value=datetime.now().date())
+    
+    filename = "orders.csv"
+    try:
+        df = pd.read_csv(filename)
+        df['Date'] = pd.to_datetime(df['Date'])
+        if member_filter != 'All':
+            df = df[df['Member Type'] == member_filter]
+        df = df[(df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)]
+        st.write(df)
+    except FileNotFoundError:
+        st.write("No data available.")
